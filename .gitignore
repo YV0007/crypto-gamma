@@ -36,3 +36,6 @@ logs/
 
 # Stray scratch files
 \# data encapsualtion - bundling of data .py
+
+# Internal planning notes, kept local
+PLAN_TO_DECK.md

@@ -81,7 +81,7 @@ Gamma sign flips on only 18.7% of days, so the pooled estimate compares differen
 | IV on expiry cycle | 2SLS; exclusion restriction weak, exploratory | +0.265 | 0.97 |
 | **within-day, mixed-sign days** | cleanest; 272 days, median \|GEX\| 2.8× smaller | **+0.0035** | **0.23** |
 
-Dose-response by |GEX| quintile: t = −3.3, 0.0, 3.9, 5.2, 3.4. Pre-event window and scrambled-direction placebos are null. Post-ETF (2024‑01‑11) the effect is flat across distance-to-expiry (t 2.6–5.3 beyond 1 day); 2022, where the book is 8× smaller, reverses sign. Whether the within-day null is confounding or attenuation (weak treatment + noisy label on days gamma passes through zero) is argued in [`STATUS.md` §6b](STATUS.md) and left open; the pooled H3 numbers are excluded from the multiple-testing family on that ground.
+Dose-response by |GEX| quintile: t = −3.3, 0.0, 3.9, 5.2, 3.4. Pre-event window and scrambled-direction placebos are null. Post-ETF (2024‑01‑11) the effect is flat across distance-to-expiry (t 2.6–5.3 beyond 1 day); 2022, where the book is 8× smaller, reverses sign. Whether the within-day null is confounding or attenuation (weak treatment + noisy label on days gamma passes through zero) is argued in [`docs/STATUS.md` §6b](docs/STATUS.md) and left open; the pooled H3 numbers are excluded from the multiple-testing family on that ground.
 
 ![H3 under every identification strategy](docs/figures/h3_specification_ofi_5m.png)
 
@@ -144,9 +144,10 @@ src/utils/      stats (HAC OLS, Newey-West, block bootstrap, PSR/DSR, MinTRL, Be
 tests/          172 tests: sign invariants, GEX arithmetic, lifecycle, no-lookahead rebuild, cost accounting, HAC/bootstrap/DSR
 scripts/        backfill, parquet export, endpoint validation, API recon, reports, reproduce_all.sh
 outputs/        tables (machine-readable results), working paper, WUTIS deck
+docs/           CONTEXT (hypotheses, standards declared before results), STATUS (full record, H3 identification argument), DIAGNOSTIC_H2 (audit), figures
 ```
 
-[`CONTEXT.md`](CONTEXT.md) — hypotheses, prior work, statistical standards declared before results. [`STATUS.md`](STATUS.md) — full record including the two construction faults found and fixed (trending sort, excluded blocks) and the H3 identification argument. [`DIAGNOSTIC_H2.md`](DIAGNOSTIC_H2.md) — the audit. [Working paper](outputs/Dealer_Gamma_Bitcoin_WorkingPaper.pdf) · [deck](outputs/WUTIS_dealer_gamma.pdf).
+[`docs/CONTEXT.md`](docs/CONTEXT.md) — hypotheses, prior work, statistical standards declared before results. [`docs/STATUS.md`](docs/STATUS.md) — full record including the two construction faults found and fixed (trending sort, excluded blocks) and the H3 identification argument. [`docs/DIAGNOSTIC_H2.md`](docs/DIAGNOSTIC_H2.md) — the audit. [Working paper](outputs/Dealer_Gamma_Bitcoin_WorkingPaper.pdf) · [deck](outputs/WUTIS_dealer_gamma.pdf).
 
 ## Limitations
 
