@@ -1,0 +1,323 @@
+# ---------------------------------------------------------------------------
+# Single source of truth for every parameter in the study.
+# Statistical standard #6 (reproducibility): no magic numbers in code.
+# Every construction choice below is a documented decision — contribution #1.
+# ---------------------------------------------------------------------------
+
+seed: 42
+
+sample:
+  currency: BTC
+  start: "2022-01-01"          # two years either side of the ETF launch
+  end:   "2025-12-31"
+  etf_launch: "2024-01-11"     # H4 Chow-test breakpoint
+  # Declared in methods BEFORE results are looked at (statistical standard #3).
+  oos_split:
+    train: ["2022-01-01", "2023-12-31"]
+    test:  ["2024-01-01", "2025-12-31"]
+
+api:
+  base:    "https://www.deribit.com/api/v2"
+  history: "https://history.deribit.com/api/v2"   # >24h trade lookback
+  rate_limit_per_sec: 15       # under the 20/s standard limit, leaves headroom
+  max_retries: 5
+  backoff_base_sec: 1.0
+  timeout_sec: 30
+
+paths:
+  raw:       "data/raw"
+  interim:   "data/interim"
+  processed: "data/processed"
+  figures:   "outputs/figures"
+  tables:    "outputs/tables"
+  oi_snapshots: "/Users/macbook/crypto-gamma-collector/oi_snapshots"   # outside ~/Desktop: launchd cannot write into TCC-protected folders
+  # Hourly OI-only snapshots (no greek columns) -- see src/fetch/book_summary.py --light.
+  oi_light:     "/Users/macbook/crypto-gamma-collector/oi_light"
+
+# ---------------------------------------------------------------------------
+# Construction choices. `baseline` is what the headline results use;
+# `alternatives` are swept in the robustness battery.
+# ---------------------------------------------------------------------------
+construction:
+  interval: "10min"                  # matches Glassnode's published resolution
+  # Full-period GEX is streamed in time chunks: a materialised
+  # (instrument x interval) grid over 2022-2025 would be ~1.6e10 cells.
+  # Smaller chunks = lower peak memory, slightly more overhead.
+  pipeline_chunk_days: 5
+  interval_alternatives: ["1h", "1d"]
+
+  block_trades:
+    # Blocks are 1.3% of TRADES but 31% of VOLUME and 67% of the NET dealer
+    # flow (2024: -85,939 of -127,858 BTC). Excluding them -- the old baseline,
+    # chosen on the count statistic -- discards two thirds of the signal:
+    # rerunning 2024 both ways moves median GEX from -$6.97M to -$18.60M,
+    # takes dealers from short-gamma 84.4% to 98.0% of intervals, and flips
+    # the sign of 15.1% of intervals (Spearman 0.741). See DIAGNOSTIC_H2.md §2.
+    baseline: "include"              # flagged via `block_trade_id`
+    alternatives: ["exclude", "half_weight"]
+
+  position_decay:
+    baseline: "none"
+    alternatives: ["exp_30d_halflife"]
+
+  expiry_handling: "hard_zero"       # position forced to 0 at expiry
+
+  deep_otm:
+    baseline: "include_all"
+    alternatives: ["exclude_abs_delta_lt_0.01"]
+
+  # RECON FINDING (2026-08-31): every BTC option -- live and historical --
+  # reports contract_size 1.0, but BTC-PERPETUAL reports 10.0. The authoritative
+  # per-instrument value is stored in data/interim/instruments.parquet and MUST
+  # be joined from there. This constant is a FALLBACK ONLY, used when an
+  # instrument is missing from the parquet; a wrong contract size rescales GEX
+  # by a silent constant factor that nothing downstream would catch.
+  contract_size_fallback: 1.0
+
+  # ---------------------------------------------------------------------
+  # GREEKS. CONTEXT.md §6 says "do not recompute, Deribit publishes them".
+  # VERIFIED FALSE FOR HISTORICAL DATA (2026-08-31):
+  #   ticker on an expired instrument      -> "instrument is not active"
+  #   book_summary on an expired instrument-> "instrument is not open"
+  #   book_summary on a LIVE instrument    -> carries NO greeks columns at all
+  #   historical trades                    -> carry `iv` + `index_price`, no greeks
+  # Greeks are reachable ONLY via `ticker`, and ONLY while an instrument is
+  # still active. There is no historical greeks endpoint on either host.
+  #
+  # source options:
+  #   deribit_ticker_snapshot -- live instruments only; useless for a
+  #                              backdated sample. Forward-collectable.
+  #   tardis_options_chain    -- Deribit-published greeks, but only the first
+  #                              day of each month on the free tier.
+  #   black_scholes_from_iv   -- closed-form gamma from Deribit's OWN published
+  #                              mark `iv` carried on every trade. NOT
+  #                              IMPLEMENTED: requires an explicit decision,
+  #                              since it recomputes what §6 says to pull.
+  greeks:
+    source: "black_scholes_from_iv"
+    # Greeks are point-in-time snapshots; positions are continuous. Alignment:
+    #   nearest_prior -- last snapshot at or before the grid point (default;
+    #                    strictly backward-looking, no lookahead bias)
+    #   interpolate   -- linear between bracketing snapshots (USES FUTURE
+    #                    INFORMATION -- robustness only, never headline)
+    alignment: "nearest_prior"
+    max_staleness: "24h"        # beyond this a snapshot is treated as missing
+    # What to do with (instrument, interval) cells that have no gamma.
+    #   exclude -- drop the cell from the GEX sum and REPORT the coverage
+    #   fail    -- raise; use when coverage is expected to be complete
+    # Never "zero": a zero-filled gamma silently shrinks GEX toward zero and
+    # is indistinguishable from a genuinely flat position.
+    missing_policy: "exclude"
+
+    # Black-Scholes recomputation from Deribit's OWN published mark `iv`.
+    # CALIBRATED against Deribit's published gamma on 161 live instruments
+    # (2026-08-31): correlation 0.9976, median ratio 1.0138, and NO systematic
+    # dependence on spot (0.01), moneyness (-0.08) or maturity (0.01). Deribit
+    # therefore publishes gamma in the standard USD convention
+    #     gamma = pdf(d1) / (S * sigma * sqrt(T))
+    # with no inverse/quanto rescaling. Residual dispersion is their 5-decimal
+    # rounding of ~1e-5 gammas, not a model difference.
+    black_scholes:
+      risk_free_rate: 0.0      # Deribit ticker reports interest_rate 0
+      iv_min_pct: 1.0          # trade `iv` field carries 0.0 and 999.0 outliers
+      iv_max_pct: 500.0
+      min_tte_days: 0.0041667  # 6 minutes; gamma explodes as T->0
+
+  # Spot series used for the S^2 term in GEX.
+  #   ohlcv        -- data/interim/ohlcv_1m.parquet (BTC-PERPETUAL 1m close)
+  #   index_price  -- the index_price carried on every trade, forward-filled
+  spot_source: "index_price"
+
+  # Appendix extensions — cut first under time pressure (§12 scope creep).
+  quanto_adjustment: false           # inverse options: BTC numéraire
+  vanna_charm: false
+
+# ---------------------------------------------------------------------------
+# Hypothesis parameters
+# ---------------------------------------------------------------------------
+h1_reconciliation:
+  # GO/NO-GO gate on median absolute error vs published OI
+  proceed_threshold: 0.15            # <15% -> proceed as planned
+  reframe_threshold: 0.30            # 15-30% -> proceed, reframe on measurement
+                                     # >30%  -> pivot to pure H3 event study
+
+h2_volatility:
+  n_quantiles: 5                     # quintile sort
+  rv_window: "1h"
+  autocorr_lags: [1, 5]
+  controls: ["dvol", "spot_volume", "funding_rate", "hour_of_day"]
+
+  # HOW GEX IS SCALED BEFORE SORTING -- the choice that decides the result.
+  #
+  # GEX is a trending dollar level: median -$0.6M (2022) -> -$13.1M (2025),
+  # partly mechanical (GEX = pos x gamma x S^2, gamma ~ 1/S, so GEX ~ S and
+  # spot rose 3.6x) and partly book growth. 50.1% of its variance is
+  # between-month. Sorting the RAW level therefore sorts calendar time: Q1 is
+  # 95% 2024-25, Q4 is 55% 2022, and only 0.1% of 2022 reaches Q1.
+  #
+  # That is what produced the "wrong sign, not noise" result in STATUS §6:
+  #   corr(gex, year) = -0.361, corr(rv, year) = -0.135, product +0.049,
+  #   observed corr(gex, rv) = +0.032 -- the whole effect.
+  #
+  #   raw            -- no scaling. CONFOUNDED. Kept only to display the bias.
+  #   rolling_z      -- z-score against a trailing window. Backward-looking,
+  #                     so it is the only detrended option with no lookahead.
+  #                     BASELINE.
+  #   within_month   -- z-score within calendar month. Uses the whole month,
+  #                     so it peeks; robustness only.
+  #   within_year    -- z-score within calendar year. Peeks harder; robustness.
+  detrend:
+    baseline: "rolling_z"
+    alternatives: ["raw", "within_month", "within_year"]
+    rolling_window: "60D"            # trailing window for rolling_z
+    min_periods_frac: 0.25           # need this share of the window populated
+
+h3_perpflow:                         # CORE
+  return_interval: "5min"
+  event_threshold_sigma: 1.0         # |5-min return| > 1 sigma
+  response_windows_min: [5, 15, 30]  # net signed perp taker volume over t+1..t+k
+  bootstrap_reps: 10000
+  run_on: ["gex_flow", "gex_naive"]  # the horse race lives here too
+
+h4_structural:
+  rolling_window_days: 90
+  chow_breakpoint: "2024-01-11"
+
+h5_pinning:
+  expiry_weekday: "FRI"
+  expiry_hour_utc: 8
+  lookback_hours: 24
+  placebo: "non_expiry_fridays"
+
+h6_strategy:
+  # Deribit fee schedule — applied from the first backtest, never bolted on later
+  fees:
+    perp_taker_bps: 5.0
+    perp_maker_bps: 0.0
+    slippage_bps: 2.0
+  benchmarks: ["always_mean_revert", "always_momentum", "buy_and_hold"]
+
+  # Signal is TAKER by construction: the rule reacts to a return that has just
+  # happened, so it crosses the spread. Costing it at maker would be assuming
+  # the fill that is hardest to get. cost_bps = perp_taker_bps + slippage_bps,
+  # charged on |position change|, so a full reversal (-1 -> +1) pays twice.
+  execution: "taker"
+
+  # BASELINE, declared before the first run (statistical standard #3). The
+  # headline number is this specification whatever the sweep turns up.
+  signal:
+    # Regime is read off the SAME backward-looking variable H2 sorts on:
+    # the rolling-60d z-score of GEX_flow. The raw level is confounded with
+    # calendar time (see h2_volatility.detrend) and would make this a bet on
+    # the year, not on gamma.
+    detrend: "rolling_z"
+    # |z| above which a regime is declared. A fixed threshold in z units is
+    # legitimate here precisely because z is already a TRAILING standardisation
+    # -- an unconditional quantile of z over the whole sample would be lookahead.
+    gamma_z_threshold: 1.0
+    # The return whose sign the rule reacts to, and how long a position is held.
+    # hold >= lookback; rebalancing is blocked between hold points so turnover
+    # is bounded by construction rather than by hope.
+    lookback: "10min"
+    hold: "1h"
+    # Flat in the middle of the z distribution. The hypothesis is about the
+    # TAILS of dealer gamma; trading the middle would dilute it with noise and
+    # pay fees for the privilege.
+    trade_middle: false
+
+  # Swept in the robustness battery. EVERY combination is written to the
+  # specification log, losers included, so the Deflated Sharpe bar rises to
+  # match the search actually performed.
+  alternatives:
+    gamma_z_threshold: [0.5, 1.5, 2.0]
+    lookback: ["10min", "30min", "1h"]
+    hold: ["10min", "1h", "4h", "1D"]
+
+sensitivity:
+  # What % of taker-flagged trades must be misclassified to flip the result?
+  maker_is_dealer_misclassification: [0.0, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+
+stats:
+  newey_west_lags: "auto"            # auto -> floor(4*(T/100)^(2/9))
+  confidence_level: 0.95
+  # Every specification tried is logged, for the Deflated Sharpe Ratio.
+  # src/utils/speclog.py appends one row per spec per run; trials are counted
+  # by DISTINCT spec_id, so re-running an analysis does not inflate the count.
+  spec_log: "outputs/tables/specification_log.csv"
+
+  bootstrap:
+    # Moving block bootstrap. 10-minute observations inside a day are strongly
+    # dependent, so blocks are whole UTC days: resampling observations
+    # independently would understate every error bar in the study.
+    reps: 1000
+    block: "1D"
+
+  deflated_sharpe:
+    # DSR needs the variance of Sharpe ratios ACROSS trials. Read from the
+    # spec log, never hardcoded. Below this many logged Sharpes there is no
+    # spread to estimate and src.utils.stats falls back to the iid 1/n
+    # approximation, with a warning.
+    min_logged_sharpes: 2
+    # A result "survives deflation" at this probability. Declared here rather
+    # than chosen once the number is on the screen (statistical standard #3).
+    survival_threshold: 0.95
+
+# ---------------------------------------------------------------------------
+# Stage 1: data acquisition. Verified against the live API 2026-08-31 by
+# scripts/probe_api.py -- see outputs/tables/api_recon.json.
+# ---------------------------------------------------------------------------
+fetch:
+  # RECON FINDING: `expired=true` on www.deribit.com returns only the most
+  # recent expiry batch (56 instruments). The SAME call on history.deribit.com
+  # returns the full historical universe (120,929 BTC options back to
+  # 2016-07-15). Always enumerate instruments against `history`.
+  instrument_host: history
+
+  # RECON FINDING: the RiveChen fetcher pages per-instrument on trade_seq.
+  # `get_last_trades_by_currency_and_time` returns every option trade in a
+  # time window with instrument_name embedded, cutting the request count from
+  # ~120k to ~5k. Measured 2024-03-05: 43,201 rows in 5 requests / 38.8 s.
+  # Boundary duplicates are expected and removed at parquet export on
+  # (instrument_name, trade_seq) -- consistent with the RiveChen docs.
+  option_trades:
+    method: get_last_trades_by_currency_and_time
+    kind: option
+    page_size: 10000          # API max
+    window: day               # one checkpointed task per UTC day
+    sorting: asc
+
+  perp_trades:
+    instrument: BTC-PERPETUAL   # NEVER fetch all futures (~90 GB)
+    method: get_last_trades_by_instrument_and_time
+    page_size: 10000
+    window: day
+    sorting: asc
+
+  market_data:
+    ohlcv_instrument: BTC-PERPETUAL
+    ohlcv_resolution: "1"       # minutes, per get_tradingview_chart_data
+    # RECON FINDING (2026-08-31): get_tradingview_chart_data caps at 5,001 bars
+    # per response and SILENTLY TRUNCATES -- a 30-day 1-minute request returns
+    # status "ok" with 5,001 of 43,201 bars and no error. 3 days = 4,321 bars,
+    # safely inside the cap. `_assert_complete` re-checks every chunk.
+    ohlcv_chunk_days: 3
+    # RECON FINDING: get_volatility_index_data SILENTLY returns zero points
+    # for resolution 1 and 60. Only 3600 / 43200 / 1D return data. DVOL
+    # history begins in 2022 (2021 requests come back empty).
+    dvol_resolution: "3600"
+    dvol_chunk_days: 30
+
+  # Concurrency and resilience
+  workers: 8                    # concurrent day-tasks
+  page_size_retry_floor: 500    # shrink page on repeated server disconnects
+  max_attempts: 10
+  backoff_base_sec: 0.5
+  backoff_max_sec: 60.0
+  jitter: true
+
+  storage:
+    compress: true              # write .jsonl.gz -- raw perp is ~35 GB plain
+    checkpoint_db: "data/raw/.checkpoints.db"
+    option_dir: "data/raw/option_trades"
+    perp_dir: "data/raw/perp_trades"
+    log_dir: "logs"

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crypto-gamma.oi-collector</string>
+
+    <!-- Points at ~/crypto-gamma-collector, NOT at the repo. The repo lives in
+         ~/Desktop, which macOS TCC protects; a LaunchAgent has no Full Disk
+         Access and cannot even read a script there ("Operation not permitted").
+         scripts/install_collector.sh keeps this copy in sync. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/macbook/crypto-gamma-collector/collect_oi.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/macbook/crypto-gamma-collector</string>
+
+    <!-- launchd StartCalendarInterval uses LOCAL time, which shifts with DST.
+         The 08:00 UTC expiry is what matters, so 08:50 and 09:50 local are both
+         scheduled: one of them lands just before 08:00 UTC in CET, the other in
+         CEST. The 15:50/21:50 runs give intraday coverage and mean a single
+         failed run is never a lost day. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>50</integer></dict>
+    </array>
+
+    <!-- Snapshot at every login/boot as well. launchd replays a missed calendar
+         slot only ONCE no matter how long the Mac was off, so this is the
+         cheapest way to make downtime cost less. A snapshot is ~120 KB. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- ~/Library/Logs is not TCC-protected. Pointing these into ~/Desktop makes
+         launchd fail to open its own log and the job dies before it starts. -->
+    <key>StandardOutPath</key>
+    <string>/Users/macbook/Library/Logs/crypto-gamma-oi.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/macbook/Library/Logs/crypto-gamma-oi.log</string>
+</dict>
+</plist>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crypto-gamma.oi-light</string>
+
+    <!-- Hourly OI-only snapshot: ONE API request, ~1 s, 19 KB.
+         Runs from ~/crypto-gamma-collector, never from the repo -- ~/Desktop is
+         TCC-protected and launchd cannot read a script there. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/macbook/crypto-gamma-collector/collect_oi_light.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/macbook/crypto-gamma-collector</string>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <!-- Top of every hour: a REGULAR grid, which is what reconciliation
+             against Glassnode's 10-min series needs. Omitting Hour means
+             "every hour". -->
+        <dict><key>Minute</key><integer>0</integer></dict>
+
+        <!-- Expiry bracket. Contracts settle at 08:00 UTC and a daily snapshot
+             cannot separate OI destroyed at settlement from positions reopened
+             afterwards -- exactly what H5 pinning and the H1 reconciliation
+             need. We want 07:55 and 08:15 UTC.
+
+             launchd StartCalendarInterval is ALWAYS local time and this machine
+             is Europe/Madrid, so the UTC offset changes with DST. Both variants
+             are listed; the two that miss simply take a harmless extra 19 KB
+             snapshot rather than leaving the bracket to luck.
+                 CEST (UTC+2, summer): 09:55 / 10:15
+                 CET  (UTC+1, winter): 08:55 / 09:15  -->
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>55</integer></dict>
+        <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>55</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>15</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- ~/Library/Logs is not TCC-protected. A log path inside ~/Desktop makes
+         launchd fail to open its own log and the job dies leaving no trace. -->
+    <key>StandardOutPath</key>
+    <string>/Users/macbook/Library/Logs/crypto-gamma-oi.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/macbook/Library/Logs/crypto-gamma-oi.log</string>
+</dict>
+</plist>

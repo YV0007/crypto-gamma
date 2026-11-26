@@ -1,0 +1,38 @@
+# Secrets — MUST be ignored before the first commit
+.env
+*.key
+
+# Data — never commit; regenerable by script
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+
+# Outputs are regenerable; keep the dirs, drop the contents
+outputs/figures/*
+outputs/tables/*
+!outputs/**/.gitkeep
+
+# Fetcher checkpoints
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+
+# Runtime logs
+logs/
+
+# Stray scratch files
+"# data encapsualtion - bundling of data .py"

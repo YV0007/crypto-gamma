@@ -1,0 +1,37 @@
+[project]
+name = "crypto-gamma"
+version = "0.1.0"
+description = "Flow-based dealer gamma exposure in crypto options, reconstructed from Deribit taker flow"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    "statsmodels>=0.14",   # Newey-West HAC standard errors
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "matplotlib>=3.9",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6", "jupyter>=1.0"]
+
+# LAYOUT NOTE
+# `src/` is itself the top-level package, so modules import as `src.fetch.client`
+# and scripts run as `python -m src.fetch.option_trades` from the repository
+# root. This is deliberate: a bare top-level `build` package (src/build/) would
+# shadow the PEP 517 `build` module.
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
