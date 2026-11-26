@@ -35,4 +35,4 @@ venv/
 logs/
 
 # Stray scratch files
-"# data encapsualtion - bundling of data .py"
+\# data encapsualtion - bundling of data .py
