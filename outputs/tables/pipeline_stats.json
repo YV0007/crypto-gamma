@@ -1,0 +1,21 @@
+{
+  "elapsed_min": 50.42647838195165,
+  "intervals": 210384,
+  "instruments": 57470,
+  "mode": "include",
+  "n_trades_in": 16888077,
+  "n_block": 262599,
+  "block_fraction": 0.015549372495163303,
+  "n_trades_out": 16888077,
+  "cells": 169532496.0,
+  "cells_live": 147681600.0,
+  "cells_with_gamma": 77636039.0,
+  "pos_weight_total": 26564644610.2,
+  "pos_weight_with_gamma": 21641632178.1,
+  "gamma_sum_observed": 4265.298903692961,
+  "abs_contrib": 24431487290987.508,
+  "_source": "logs/pipeline_blockincl.log (full-period run, blocks INCLUDED, 1 Sep 2026)",
+  "block_fraction_volume": 0.381885799675444,
+  "block_fraction_net_flow": 0.9711542779750919,
+  "_note": "cell counts from the 1 Sep full run; block volume/net-flow shares from the 3 Sep run, which added that logging. Both ran the same 16,888,077 trades with blocks included, so the shares are identical."
+}

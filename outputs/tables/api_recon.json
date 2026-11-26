@@ -1,0 +1,39 @@
+{
+  "a_instruments": {
+    "live": 1026,
+    "expired_returned": 56,
+    "total": 1082,
+    "earliest_creation": "2025-09-25T08:00:12+00:00",
+    "earliest_expiry": "2026-08-30T08:00:00+00:00",
+    "latest_expiry": "2027-06-25T08:00:00+00:00",
+    "reaches_sample_start": false,
+    "in_sample_window": 0
+  },
+  "d_contract_size": {
+    "options": {
+      "1.0": 1082
+    },
+    "perpetual": {
+      "BTC-PERPETUAL": 10.0
+    }
+  },
+  "b_trades": {
+    "ok": false
+  },
+  "c_ticker": {
+    "instrument": "BTC-31AUG26-70000-C",
+    "greeks_keys": [
+      "delta",
+      "gamma",
+      "rho",
+      "theta",
+      "vega"
+    ],
+    "has_gamma": true,
+    "has_delta": true,
+    "has_vega": true,
+    "has_theta": true,
+    "has_open_interest": true,
+    "has_mark_iv": true
+  }
+}

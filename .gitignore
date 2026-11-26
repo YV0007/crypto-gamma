@@ -8,9 +8,9 @@ data/interim/*
 data/processed/*
 !data/**/.gitkeep
 
-# Outputs are regenerable; keep the dirs, drop the contents
+# Figures are regenerable (scripts/reproduce_all.sh); curated copies live in docs/figures.
+# Tables are small and are the machine-readable results the README cites, so they are tracked.
 outputs/figures/*
-outputs/tables/*
 !outputs/**/.gitkeep
 
 # Fetcher checkpoints

@@ -1,0 +1,57 @@
+{
+  "question": "is the pre-ETF H3 reversal a venue effect or measurement failure?",
+  "verdict": "measurement failure, concentrated in 2022",
+  "evidence": {
+    "pre_etf_all": {
+      "did": -0.033868427252907535,
+      "se": 0.013311036313792575,
+      "t": -2.544386962404564,
+      "n_obs": 35960,
+      "n_days": 735
+    },
+    "pre_etf_excl_2022": {
+      "did": 0.036209821189569724,
+      "se": 0.02310927905268274,
+      "t": 1.5668953197121116,
+      "n_obs": 17885,
+      "n_days": 372
+    },
+    "y2022_only": {
+      "did": -0.09015249957482137,
+      "se": 0.016317079336585827,
+      "t": -5.525038992283579,
+      "n_obs": 18075,
+      "n_days": 363
+    },
+    "y2023_only": {
+      "did": 0.035147406217723304,
+      "se": 0.023177100078681828,
+      "t": 1.5164712625136265,
+      "n_obs": 17090,
+      "n_days": 362
+    },
+    "pre_etf_low_gamma": {
+      "did": -0.06729737329305183,
+      "se": 0.015531154190759525,
+      "t": -4.333056800961472,
+      "n_obs": 17981,
+      "n_days": 481
+    },
+    "pre_etf_high_gamma": {
+      "did": -0.000264544707533194,
+      "se": 0.030054078939028978,
+      "t": -0.008802289634956993,
+      "n_obs": 17979,
+      "n_days": 458
+    }
+  },
+  "supporting": {
+    "gamma_coverage_2022": 0.581,
+    "gamma_coverage_2025": 0.693,
+    "median_absGEX_musd_2022": 3.558,
+    "median_absGEX_musd_2025": 27.283,
+    "truncated_instruments": 430,
+    "truncated_last_expiry": "2022-12-30",
+    "note": "truncated instruments all expire in 2022, so they cannot affect 2023+"
+  }
+}

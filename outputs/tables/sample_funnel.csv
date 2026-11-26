@@ -1,0 +1,9 @@
+step,n,note
+BTC option trades downloaded,16888077,"1 Jan 2022 - 31 Dec 2025, no gaps"
+after block-trade policy,16888077,"blocks kept (38% of volume, 97% of net dealer flow)"
+instruments with a reconstructed position,57470,cumulative from listing
+(instrument x interval) cells,169532496,10-minute grid
+cells before expiry,147681600,position forced to 0 at expiry
+cells priced with gamma,77636039,81% of position weight
+panel intervals,210384,aggregated GEX series
+intervals usable for analysis,210383,GEX and realized vol both present

@@ -1,0 +1,56 @@
+{
+  "snapshot_ts": "2026-09-04 07:50:05.636084+00:00",
+  "n_instruments": 1008,
+  "spot": 81184.74,
+  "per_instrument": {
+    "n_with_published_gamma": 724,
+    "n_published_gamma_zero": 284,
+    "distinct_published_gammas": 25,
+    "median_ratio": 0.9950474067958284,
+    "corr_levels": 0.996272424674242
+  },
+  "aggregate": {
+    "signed_gex_deribit": -279564066.70844066,
+    "signed_gex_ours": -277205649.1310688,
+    "signed_ratio": 0.9915639459493504,
+    "gross_exposure_deribit": 581514327.4960096,
+    "gross_exposure_ours": 579310549.8385233,
+    "gross_ratio": 0.9962102779703198,
+    "exposure_deribit_rounds_to_zero": 11985459.178036392,
+    "share_of_gross_lost_to_rounding": 0.02068917816424578
+  },
+  "by_time_to_expiry": [
+    {
+      "bucket": "<7d",
+      "n": 266,
+      "gross_deribit": 64743214.20194511,
+      "gross_ours": 66665158.912145235,
+      "ratio": 1.0296856548426103,
+      "pub_zero": 92
+    },
+    {
+      "bucket": "7-30d",
+      "n": 226,
+      "gross_deribit": 351419280.2097357,
+      "gross_ours": 344264792.65131676,
+      "ratio": 0.9796411638139235,
+      "pub_zero": 86
+    },
+    {
+      "bucket": "30-90d",
+      "n": 196,
+      "gross_deribit": 58561356.41124212,
+      "gross_ours": 59771966.12760286,
+      "ratio": 1.020672501296919,
+      "pub_zero": 20
+    },
+    {
+      "bucket": ">90d",
+      "n": 320,
+      "gross_deribit": 106790476.67308664,
+      "gross_ours": 108608632.14745843,
+      "ratio": 1.0170254458170238,
+      "pub_zero": 86
+    }
+  ]
+}
